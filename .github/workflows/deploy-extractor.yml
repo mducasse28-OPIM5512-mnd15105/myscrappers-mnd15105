@@ -1,6 +1,8 @@
 name: Deploy Extractor (CF Gen2 + Cloud Scheduler)
 run-name: "Extractor deploy by ${{ github.actor }} • ${{ github.ref_name }}"
-
+permissions:
+  contents: read
+  id-token: write
 on:
   push:
     branches: [ main ]
@@ -32,7 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
+      
+      - name: Debug OIDC claims
+        uses: github/actions-oidc-debugger@main
+  
       - name: Auth (WIF)
         uses: google-github-actions/auth@v2
         with:
