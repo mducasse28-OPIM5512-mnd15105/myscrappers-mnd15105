@@ -108,6 +108,45 @@ jobs:
           gcloud services list --enabled --filter="cloudscheduler.googleapis.com" --format="value(config.name)" | grep -q cloudscheduler.googleapis.com \
             || gcloud services enable cloudscheduler.googleapis.com
 
+      - name: Bootstrap IAM for Scheduler OIDC (runtime SA)
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          if [[ -z "${RUNTIME_SA:-}" ]]; then echo "::error::RUNTIME_SA is not set"; exit 1; fi
+          if [[ -z "${PROJECT_ID:-}" ]]; then echo "::error::PROJECT_ID is not set"; exit 1; fi
+ 
+          PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
+          SCHED_AGENT="service-${PROJECT_NUMBER}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+          echo "Checking IAM bindings for ${RUNTIME_SA}..."
+ 
+          # 2. Check for TokenCreator role (for Scheduler Agent)
+          HAS_TOKEN_CREATOR=$(gcloud iam service-accounts get-iam-policy "${RUNTIME_SA}" \
+            --format="json" | jq -r ".bindings[]? | select(.role == \"roles/iam.serviceAccountTokenCreator\") | .members[]?" | grep -q "${SCHED_AGENT}" && echo "yes" || echo "no")
+ 
+          if [ "$HAS_TOKEN_CREATOR" == "no" ]; then
+            echo "Adding TokenCreator role to ${RUNTIME_SA}..."
+            gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
+              --member="serviceAccount:${SCHED_AGENT}" \
+              --role="roles/iam.serviceAccountTokenCreator" \
+              --project="${PROJECT_ID}" --quiet
+          else
+            echo "Scheduler Agent already has TokenCreator role. Skipping."
+          fi
+ 
+          # 3. Check for ServiceAccountUser role (for Deployer SA)
+          HAS_SA_USER=$(gcloud iam service-accounts get-iam-policy "${RUNTIME_SA}" \
+            --format="json" | jq -r ".bindings[]? | select(.role == \"roles/iam.serviceAccountUser\") | .members[]?" | grep -q "${DEPLOYER_SA}" && echo "yes" || echo "no")
+ 
+          if [ "$HAS_SA_USER" == "no" ]; then
+            echo "Adding ServiceAccountUser role to ${RUNTIME_SA}..."
+            gcloud iam service-accounts add-iam-policy-binding "${RUNTIME_SA}" \
+              --member="serviceAccount:${DEPLOYER_SA}" \
+              --role="roles/iam.serviceAccountUser" \
+              --project="${PROJECT_ID}" --quiet
+          else
+            echo "Deployer SA already has ServiceAccountUser role. Skipping."
+          fi
       # - name: Bootstrap IAM for Scheduler OIDC (runtime SA)
       #   shell: bash
       #   run: |
