@@ -31,9 +31,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Debug OIDC claims
-        uses: github/actions-oidc-debugger@main
-  
+      #- name: Debug OIDC claims
+       # uses: github/actions-oidc-debugger@main
+      - name: Debug GitHub context
+        run: |
+          echo "repository=${{ github.repository }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"
+          echo "actor=${{ github.actor }}"
+          
       - name: Auth (WIF)
         uses: google-github-actions/auth@v2
         with:
