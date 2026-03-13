@@ -122,7 +122,8 @@ jobs:
             echo "::error::PROJECT_ID is not set."
             exit 1
           fi
-          
+          echo "DEBUG: RUNTIME_SA is [${RUNTIME_SA}]"
+          echo "DEBUG: PROJECT_ID is [${PROJECT_ID}]"
           PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
           SCHED_AGENT="service-${PROJECT_NUMBER}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
           echo "Scheduler agent: ${SCHED_AGENT}"
